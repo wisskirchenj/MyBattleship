@@ -1,7 +1,6 @@
 package de.cofinpro.battleship.controller;
 
 import de.cofinpro.battleship.config.PropertyManager;
-import de.cofinpro.battleship.model.Battlefield;
 import de.cofinpro.battleship.model.Battleship;
 import de.cofinpro.battleship.view.ScannerUI;
 import org.junit.jupiter.api.BeforeEach;

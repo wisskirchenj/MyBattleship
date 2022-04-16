@@ -3,6 +3,7 @@ package de.cofinpro.battleship.controller;
 import de.cofinpro.battleship.config.PropertyManager;
 import de.cofinpro.battleship.model.Battlefield;
 import de.cofinpro.battleship.model.Battleship;
+import de.cofinpro.battleship.model.Shot;
 import de.cofinpro.battleship.view.PrinterUI;
 import de.cofinpro.battleship.view.ScannerUI;
 import lombok.extern.slf4j.Slf4j;
@@ -88,10 +89,22 @@ public class BattleshipController {
     }
 
     /**
-     * upcoming play loop
+     * play loop - presently in stage 2 just one shot .-)
      */
-    private void play() {
-        log.info("playing...");
+    void play() {
+        printer.info("\nThe Game starts!");
+        printer.info(battlefield.toString());
+
+        Shot shot;
+        String positionToken;
+        do {
+            positionToken = scanner.promptForShotPosition();
+            shot = battlefield.isValidShot(positionToken).orElse(null);
+        } while (shot == null);
+
+        printer.info(battlefield.toString());
+        printer.info(shot.isMissed() ? PropertyManager.getProperty("msg-miss")
+                : PropertyManager.getProperty("msg-hit"));
     }
 
     /**

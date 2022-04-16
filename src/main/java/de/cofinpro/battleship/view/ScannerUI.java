@@ -15,6 +15,7 @@ public class ScannerUI {
     private Scanner scanner;
 
     private static final String ENTER_SHIP_FORMAT = "%nEnter the coordinates of the %s (%d cells):";
+    private static final String ENTER_SHOT = "\nTake a shot!";
 
     public ScannerUI() {
         this.scanner = new Scanner(System.in);
@@ -34,5 +35,18 @@ public class ScannerUI {
             tokens = Arrays.stream(scanner.nextLine().split("\\s+")).toList();
         } while (tokens.size() != 2);
         return tokens;
+    }
+
+    /**
+     * prompt for a shot position and loops until non-empty input given.
+     * @return the scanner provided token
+     */
+    public String promptForShotPosition() {
+        String token;
+        do {
+            log.info(ENTER_SHOT);
+            token = scanner.nextLine();
+        } while (token.isEmpty());
+        return token;
     }
 }

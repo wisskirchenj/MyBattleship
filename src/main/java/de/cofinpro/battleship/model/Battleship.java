@@ -17,8 +17,8 @@ public class Battleship {
 
     private final String name;
     private final int cells;
-    //positions xPos, yPos contain the lower array index of both ship boundary cells (0 to size - 1)
-    private int xPos;
-    private int yPos;
+    // row and column contain the two lowest(!) array indices of the ship cells (0 to size - 1)
+    private int row;
+    private int column;
     private boolean isRowAligned;
 }

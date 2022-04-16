@@ -3,11 +3,13 @@ package de.cofinpro.battleship.model;
 import de.cofinpro.battleship.config.PropertyManager;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 
 /**
- * class representing the battlefield, that stores the ships and hits, misses in a field of cell with
+ * class representing the battlefield, that stores the ships and hits, misses in a field of cells with
  * configurable size.
  */
 @Slf4j
@@ -33,6 +35,16 @@ public class Battlefield {
         }
     }
 
+    class Indices {
+        int row;
+        int column;
+
+        public Indices(int row, int column) {
+            this.row = row;
+            this.column = column;
+        }
+    }
+
     private final Cell[][] field;
     private final String[] rowTitles;
     private final String[] columnTitles;
@@ -52,21 +64,61 @@ public class Battlefield {
      * method gets a list with 2 position strings (e.g. ["B2", "D3"]) and checks, if the tokens are indeed valid
      * positions on the battlefield and if the given ship can be positioned there. If it is possible, the ship is
      * positioned on the field, if not the battlefield remains unchanged.
-     * @param positions by caller guaranteed list of two non-empty elements.
+     * @param positionTokens by caller guaranteed list of two non-empty string elements.
      * @param ship the battleship to position
      * @return true, if position algorithm is able to position ship with given input
      */
-    public boolean couldPositionShip(List<String> positions, Battleship ship) {
-        int[] xIndices = getXIndicesFromPositions(positions);
-        int[] yIndices = getYIndicesFromPositions(positions);
+    public boolean couldPositionShip(List<String> positionTokens, Battleship ship) {
+        List<Indices> indices= new ArrayList<>();
+        positionTokens.forEach(token -> parsePositionToken(token).ifPresent(indices::add));
+        if (indices.size() < 2) {
+            log.error(PropertyManager.getProperty("error-msg-wrong-coords"));
+            return false;
+        }
 
-        if (positionsAreAlignedOnField(xIndices, yIndices, ship)
-                && matchesShipLength(xIndices, yIndices, ship)
+        if (positionsAreAlignedOnField(indices, ship)
+                && matchesShipLength(indices, ship)
                 && shipFitsWithOtherShips(ship)) {
             positionShip(ship);
             return true;
         }
         return false;
+    }
+
+    /**
+     * Gets a position string (e.g. "B2"). If the token is indeed valid, i.e. it can be parsed and does not
+     * hit an own ship, a random hit success is generated and stored in a new Shot object AND in the
+     * battlefield.
+     * @param positionToken by caller guaranteed non-empty string.
+     * @return empty, if no valid position, a shot object with success information and position of the shot
+     */
+    public Optional<Shot> isValidShot(String positionToken) {
+        Optional<Shot> optionalShot = parsePositionToken(positionToken).map(
+                indices -> new Shot(indices, field[indices.row][indices.column] != Cell.SHIP)
+        );
+        optionalShot.ifPresentOrElse(shot ->
+                field[shot.getPosition().row][shot.getPosition().column]
+                        = shot.isMissed() ? Cell.MISS : Cell.HIT,
+                () -> log.error(PropertyManager.getProperty("error-msg-wrong-coords")));
+        return optionalShot;
+    }
+
+    /**
+     * Parses a string position token given by user into an Indices object with row and column indices.
+     * @param token string token to parse
+     * @return optional with parse result as Indices object or empty if parse fails
+     */
+    Optional<Indices> parsePositionToken(String token) {
+        int row = token.toUpperCase().toCharArray()[0] - 'A';
+        if (row < 0 || row >= size || token.length() < 2
+                || !token.substring(1).matches("\\d+")) {
+            return Optional.empty();
+        }
+        int column = Integer.parseInt(token.substring(1)) - 1;
+        if (column < 0 || column >= size) {
+            return Optional.empty();
+        }
+        return Optional.of(new Indices(row, column));
     }
 
     /**
@@ -76,9 +128,9 @@ public class Battlefield {
     private void positionShip(Battleship ship) {
         for (int i = 0; i < ship.getCells(); i++) {
             if (ship.isRowAligned()) {
-                field[ship.getXPos()][ship.getYPos() + i] = Cell.SHIP;
+                field[ship.getRow()][ship.getColumn() + i] = Cell.SHIP;
             } else {
-                field[ship.getXPos() + i][ship.getYPos()] = Cell.SHIP;
+                field[ship.getRow() + i][ship.getColumn()] = Cell.SHIP;
             }
         }
     }
@@ -90,15 +142,15 @@ public class Battlefield {
      * @return true if check passes
      */
      boolean shipFitsWithOtherShips(Battleship ship) {
-        int x = ship.getXPos();
-        int y = ship.getYPos();
-        int l = ship.getCells();
+        int row = ship.getRow();
+        int column = ship.getColumn();
+        int cells = ship.getCells();
         if (ship.isRowAligned()
-                && isWaterInRectangle(Math.max(0, x - 1), Math.min(size - 1, x + 1),
-                                     Math.max(0, y - 1), Math.min(size - 1, y + l))
+                && isWaterInRectangle(Math.max(0, row - 1), Math.min(size - 1, row + 1),
+                                     Math.max(0, column - 1), Math.min(size - 1, column + cells))
             || !ship.isRowAligned()
-                && isWaterInRectangle(Math.max(0, x - 1), Math.min(size - 1, x + l),
-                                     Math.max(0, y - 1), Math.min(size - 1, y + 1))) {
+                && isWaterInRectangle(Math.max(0, row - 1), Math.min(size - 1, row + cells),
+                                     Math.max(0, column - 1), Math.min(size - 1, column + 1))) {
             return true;
         }
         log.error(PropertyManager.getProperty("error-msg-ship-too-close"));
@@ -107,16 +159,16 @@ public class Battlefield {
 
     /**
      * checks if a given rectangle inside the field has only water in it (for positioning a ship)
-     * @param xFrom lower x index
-     * @param xTo upper x index
-     * @param yFrom lower y index
-     * @param yTo upper y index
+     * @param rowFrom lower row index
+     * @param rowTo upper row index
+     * @param columnFrom lower column index
+     * @param columnTo upper column index
      * @return the check result
      */
-    private boolean isWaterInRectangle(int xFrom, int xTo, int yFrom, int yTo) {
-        for (int x = xFrom; x <= xTo; x++) {
-            for (int y = yFrom; y <= yTo; y++) {
-                if (field[x][y] != Cell.WATER) {
+    private boolean isWaterInRectangle(int rowFrom, int rowTo, int columnFrom, int columnTo) {
+        for (int row = rowFrom; row <= rowTo; row++) {
+            for (int column = columnFrom; column <= columnTo; column++) {
+                if (field[row][column] != Cell.WATER) {
                     return false;
                 }
             }
@@ -126,15 +178,15 @@ public class Battlefield {
 
     /**
      * checks, if the ship fits exactly into the user given cell area
-     * @param x the two x coordinates from the user input
-     * @param y the two y coordinates from the user input
+     * @param indices the indices converted from the user input
      * @param ship the ship to position
      * @return the check result, if the ship fits
      */
-     boolean matchesShipLength(int[] x, int[] y, Battleship ship) {
-        if (Math.abs(y[0] - y[1]) == ship.getCells() - 1 || Math.abs(x[0] - x[1]) == ship.getCells() - 1) {
-            ship.setXPos(Math.min(x[0], x[1]));
-            ship.setYPos(Math.min(y[0], y[1]));
+     boolean matchesShipLength(List<Indices> indices, Battleship ship) {
+        if (ship.isRowAligned()
+                && Math.abs(indices.get(0).column - indices.get(1).column) + 1 == ship.getCells()
+            || !ship.isRowAligned()
+                && Math.abs(indices.get(0).row - indices.get(1).row) + 1 == ship.getCells()) {
             return true;
         }
         log.error(String.format(PropertyManager.getProperty("error-msg-ship-length"), ship.getName()));
@@ -142,72 +194,27 @@ public class Battlefield {
     }
 
     /**
-     * checks, if the user given cell positions are valid (none contains -1, which is set for invalid coordinates
-     * by previous conversions getX(orY)IndicesFromPositions ). and whether they are in a row or a column (=aligned).
-     * @param x the two x coordinates from the user input
-     * @param y the two y coordinates from the user input
+     * Checks, if the user given cell positions are in a row or a column (= aligned).
+     * SIDE EFFECT: Only in case the check succeeds, the ships alignment and position fields are updated.
+     * @param indices the indices converted from the user input
      * @param ship the ship to position
-     * @return the check result, if the ship fits
+     * @return the check result
      */
-     boolean positionsAreAlignedOnField(int[] x, int[] y, Battleship ship) {
-        if (x[0] < 0 || x[1] < 0 || y[0] < 0 || y[1] < 0) {
-            log.error(PropertyManager.getProperty("error-msg-wrong-coords"));
-            return false;
-        }
-        if (x[0] == x[1]) {
+     boolean positionsAreAlignedOnField(List<Indices> indices, Battleship ship) {
+        if (indices.get(0).row == indices.get(1).row) {
             ship.setRowAligned(true);
+            ship.setRow(indices.get(0).row);
+            ship.setColumn(Math.min(indices.get(0).column, indices.get(1).column));
             return true;
         }
-        if (y[0] == y[1]) {
+        if (indices.get(0).column == indices.get(1).column) {
             ship.setRowAligned(false);
+            ship.setRow(Math.min(indices.get(0).row, indices.get(1).row));
+            ship.setColumn(indices.get(0).column);
             return true;
         }
         log.error(PropertyManager.getProperty("error-msg-ship-location"));
         return false;
-    }
-
-    /**
-     * converts the two tokens from user position input into x indices of the battlefield. If conversion fails, -1
-     * is set to this x index.
-     * @param positions list of guaranteed two non-empty user input token strings.
-     * @return the two x coordinates as int[]
-     */
-    private int[] getYIndicesFromPositions(List<String> positions) {
-        int[] yIndices = new int[positions.size()];
-        for (int i = 0; i < yIndices.length; i ++) {
-            if (positions.get(i).length() < 2 || !positions.get(i).substring(1).matches("\\d+")) {
-                yIndices[i] = -1;
-            } else {
-                yIndices[i] = indexInRangeOrDefault(Integer.parseInt(positions.get(i).substring(1)) - 1);
-            }
-        }
-        return yIndices;
-    }
-
-    /**
-     * converts the two tokens from user position input into x indices of the battlefield. If conversion fails, -1
-     * is set to this x index.
-     * @param positions list of guaranteed two non-empty user input token strings.
-     * @return the two x coordinates as int[]
-     */
-    private int[] getXIndicesFromPositions(List<String> positions) {
-        int[] xIndices = new int[positions.size()];
-        for (int i = 0; i < xIndices.length; i ++) {
-            xIndices[i] = indexInRangeOrDefault(positions.get(i).toCharArray()[0] - 'A');
-        }
-        return xIndices;
-    }
-
-    /**
-     * helper method to check, if an int is a valid index (in [0,size - 1]
-     * @param tryIndex int to try to use as index
-     * @return the given index or -1 if outside the interval.
-     */
-    private int indexInRangeOrDefault(int tryIndex) {
-        if (tryIndex < 0 || tryIndex >= size) {
-            return -1;
-        }
-        return tryIndex;
     }
 
     /**
