@@ -76,8 +76,8 @@ public class PropertyManager {
         APP_CONFIG.setProperty("error-msg-ship-length", "Error! Wrong length of the %s! Try again:");
         APP_CONFIG.setProperty("error-msg-ship-location", "Error! Wrong ship location! Try again:");
         APP_CONFIG.setProperty("error-msg-ship-too-close", "Error! You placed it too close to another one. Try again:");
-        APP_CONFIG.setProperty("msg-hit", "You hit a ship!");
-        APP_CONFIG.setProperty("msg-miss", "You missed!");
+        APP_CONFIG.setProperty("msg-hit", "\nYou hit a ship!");
+        APP_CONFIG.setProperty("msg-miss", "\nYou missed!");
         APP_CONFIG.setProperty("test-property", "standard");
     }
 }

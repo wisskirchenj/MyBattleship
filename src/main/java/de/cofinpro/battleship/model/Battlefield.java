@@ -1,6 +1,7 @@
 package de.cofinpro.battleship.model;
 
 import de.cofinpro.battleship.config.PropertyManager;
+import de.cofinpro.battleship.view.BattlefieldCell;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -15,26 +16,6 @@ import java.util.stream.IntStream;
 @Slf4j
 public class Battlefield {
 
-    /**
-     * enumeration type which is the building block of a battlefield cell.
-     * It gives its printable Symbol-String by the method getFieldSymbol(), which is a configurable property.
-     */
-    enum Cell {
-        WATER(PropertyManager.getProperty("water-symbol")),
-        SHIP(PropertyManager.getProperty("own-ship-symbol")),
-        HIT(PropertyManager.getProperty("hit-symbol")),
-        MISS(PropertyManager.getProperty("miss-symbol"));
-        private final String cellSymbol;
-
-        Cell(String symbol) {
-            this.cellSymbol = symbol;
-        }
-
-        public String getCellSymbol() {
-            return cellSymbol;
-        }
-    }
-
     class Indices {
         int row;
         int column;
@@ -45,19 +26,21 @@ public class Battlefield {
         }
     }
 
-    private final Cell[][] field;
-    private final String[] rowTitles;
-    private final String[] columnTitles;
+    private final BattlefieldCell[][] field;
     private final int size;
 
     public Battlefield(int size) {
         this.size = size;
-        field = new Cell[size][size];
-        rowTitles = new String[size];
-        columnTitles = new String[size];
-        IntStream.range(0, size * size).forEach(n -> field[n / size][n % size] = Cell.WATER);
-        IntStream.range(0, size).forEach(n -> rowTitles[n] = String.format("%-2d", n + 1));
-        IntStream.range(0, size).forEach(n -> columnTitles[n] = String.format("%-2c", 'A' + n));
+        field = new BattlefieldCell[size][size];
+        IntStream.range(0, size * size).forEach(n -> field[n / size][n % size] = BattlefieldCell.WATER);
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public BattlefieldCell[][] getField() {
+        return field;
     }
 
     /**
@@ -94,11 +77,11 @@ public class Battlefield {
      */
     public Optional<Shot> isValidShot(String positionToken) {
         Optional<Shot> optionalShot = parsePositionToken(positionToken).map(
-                indices -> new Shot(indices, field[indices.row][indices.column] != Cell.SHIP)
+                indices -> new Shot(indices, field[indices.row][indices.column] != BattlefieldCell.SHIP)
         );
         optionalShot.ifPresentOrElse(shot ->
                 field[shot.getPosition().row][shot.getPosition().column]
-                        = shot.isMissed() ? Cell.MISS : Cell.HIT,
+                        = shot.isMissed() ? BattlefieldCell.MISS : BattlefieldCell.HIT,
                 () -> log.error(PropertyManager.getProperty("error-msg-wrong-coords")));
         return optionalShot;
     }
@@ -128,9 +111,9 @@ public class Battlefield {
     private void positionShip(Battleship ship) {
         for (int i = 0; i < ship.getCells(); i++) {
             if (ship.isRowAligned()) {
-                field[ship.getRow()][ship.getColumn() + i] = Cell.SHIP;
+                field[ship.getRow()][ship.getColumn() + i] = BattlefieldCell.SHIP;
             } else {
-                field[ship.getRow() + i][ship.getColumn()] = Cell.SHIP;
+                field[ship.getRow() + i][ship.getColumn()] = BattlefieldCell.SHIP;
             }
         }
     }
@@ -168,7 +151,7 @@ public class Battlefield {
     private boolean isWaterInRectangle(int rowFrom, int rowTo, int columnFrom, int columnTo) {
         for (int row = rowFrom; row <= rowTo; row++) {
             for (int column = columnFrom; column <= columnTo; column++) {
-                if (field[row][column] != Cell.WATER) {
+                if (field[row][column] != BattlefieldCell.WATER) {
                     return false;
                 }
             }
@@ -215,22 +198,5 @@ public class Battlefield {
         }
         log.error(PropertyManager.getProperty("error-msg-ship-location"));
         return false;
-    }
-
-    /**
-     * string representation of the battlefield as used for the printerUI when logging.
-     * @return string representation of the battlefield
-     */
-    @Override
-    public String toString() {
-        StringBuilder builder = new StringBuilder("\n  ");
-        builder.append(String.join("", rowTitles));
-        for (int i = 0; i < size; i++) {
-            builder.append("\n").append(columnTitles[i]);
-            for (int j = 0; j < size; j++) {
-                builder.append(field[i][j].getCellSymbol());
-            }
-        }
-        return builder.toString();
     }
 }

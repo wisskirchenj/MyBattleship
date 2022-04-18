@@ -29,3 +29,6 @@ Enjoy!
 15.04.22 Stage 1 completed, Properties management, many new Mockito-feature tests
 
 16.04.22 Stage 2 completed, first play scene added, Optional used, complete test coverage, some refactoring
+
+18.04.22 Stage 3 completed with tests, new BattlefieldUI to separate view from model better. Not much new functionality.
+

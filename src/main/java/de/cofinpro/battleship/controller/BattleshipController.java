@@ -4,6 +4,7 @@ import de.cofinpro.battleship.config.PropertyManager;
 import de.cofinpro.battleship.model.Battlefield;
 import de.cofinpro.battleship.model.Battleship;
 import de.cofinpro.battleship.model.Shot;
+import de.cofinpro.battleship.view.BattlefieldUI;
 import de.cofinpro.battleship.view.PrinterUI;
 import de.cofinpro.battleship.view.ScannerUI;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ public class BattleshipController {
     private final PrinterUI printer = new PrinterUI();
     private ScannerUI scanner = new ScannerUI();
     private Battlefield battlefield;
+    private BattlefieldUI battlefieldUI;
 
     /**
      * the run loop of the game - entry point for main program.
@@ -46,7 +48,9 @@ public class BattleshipController {
             throw new ApplicationPropertiesException("Field-size property value must be in [2,26]. Given: " + size);
         }
         battlefield = new Battlefield(size);
-        log.info("Battlefield initialized, size " + size + ":\n" + battlefield);
+        battlefieldUI = new BattlefieldUI(battlefield);
+        printer.info("Battlefield initialized, size " + size + ":\n");
+        battlefieldUI.displayBattlefield();
     }
 
     /**
@@ -93,7 +97,7 @@ public class BattleshipController {
      */
     void play() {
         printer.info("\nThe Game starts!");
-        printer.info(battlefield.toString());
+        battlefieldUI.displayBattlefieldObscured();
 
         Shot shot;
         String positionToken;
@@ -102,9 +106,10 @@ public class BattleshipController {
             shot = battlefield.isValidShot(positionToken).orElse(null);
         } while (shot == null);
 
-        printer.info(battlefield.toString());
+        battlefieldUI.displayBattlefieldObscured();
         printer.info(shot.isMissed() ? PropertyManager.getProperty("msg-miss")
                 : PropertyManager.getProperty("msg-hit"));
+        battlefieldUI.displayBattlefield();
     }
 
     /**
@@ -124,6 +129,6 @@ public class BattleshipController {
         do {
             positions = scanner.promptForShipPosition(battleship.getName(), battleship.getCells());
         } while (!battlefield.couldPositionShip(positions, battleship));
-        printer.info(battlefield.toString());
+        battlefieldUI.displayBattlefield();
     }
 }

@@ -1,6 +1,6 @@
 package de.cofinpro.battleship.model;
 
-import de.cofinpro.battleship.config.PropertyManager;
+import de.cofinpro.battleship.view.BattlefieldCell;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -39,8 +40,6 @@ class BattlefieldTest {
         assertTrue(battlefield.couldPositionShip(List.of("F5", "H5"), new Battleship("test", 3)));
         Optional<Shot> shot = battlefield.isValidShot(position);
         assertTrue(shot.isEmpty());
-        assertFalse(battlefield.toString().contains(PropertyManager.getProperty("hit-symbol")));
-        assertFalse(battlefield.toString().contains(PropertyManager.getProperty("miss-symbol")));
     }
 
     static Stream<Arguments> provideShipPosition() {
@@ -59,8 +58,8 @@ class BattlefieldTest {
         assertTrue(shot.isPresent());
         assertFalse(shot.get().isMissed());
         assertEquals(4, shot.get().getPosition().column);
-        assertTrue(battlefield.toString().contains(PropertyManager.getProperty("hit-symbol")));
-        assertFalse(battlefield.toString().contains(PropertyManager.getProperty("miss-symbol")));
+        Battlefield.Indices indices = shot.get().getPosition();
+        assertEquals(BattlefieldCell.HIT, battlefield.getField()[indices.row][indices.column]);
     }
 
     static Stream<Arguments> provideWaterPosition() {
@@ -85,8 +84,8 @@ class BattlefieldTest {
         Optional<Shot> shot = battlefield.isValidShot(position);
         assertTrue(shot.isPresent());
         assertTrue(shot.get().isMissed());
-        assertTrue(battlefield.toString().contains(PropertyManager.getProperty("miss-symbol")));
-        assertFalse(battlefield.toString().contains(PropertyManager.getProperty("hit-symbol")));
+        Battlefield.Indices indices = shot.get().getPosition();
+        assertEquals(BattlefieldCell.MISS, battlefield.getField()[indices.row][indices.column]);
     }
 
     static Stream<Arguments> provideRowAlignedShipAndPosition() {
@@ -100,10 +99,12 @@ class BattlefieldTest {
     @MethodSource("provideRowAlignedShipAndPosition")
     void whenValidPosition_couldPositionShipPositionsShip(List<String> positions, Battleship ship) {
         assertTrue(battlefield.couldPositionShip(positions, ship));
-        assertTrue(battlefield.toString().contains(
-                PropertyManager.getProperty("own-ship-symbol").repeat(ship.getCells())));
-        assertFalse(battlefield.toString().contains(
-                PropertyManager.getProperty("own-ship-symbol").repeat(ship.getCells() + 1)));
+        int row = ship.getRow();
+        int column = ship.getColumn();
+        for (int i = 0; i < ship.getCells(); i++) {
+            assertEquals(BattlefieldCell.SHIP, battlefield.getField()[row][column + i]);
+        }
+        assertEquals(BattlefieldCell.WATER, battlefield.getField()[row][column + ship.getCells()]);
     }
 
     static Stream<Arguments> provideInvalidShipPosition() {
@@ -121,7 +122,7 @@ class BattlefieldTest {
     @MethodSource("provideInvalidShipPosition")
     void whenInvalidPosition_couldPositionShipPositionsNoShip(List<String> positions, Battleship ship) {
         assertFalse(battlefield.couldPositionShip(positions, ship));
-        assertFalse(battlefield.toString().contains(PropertyManager.getProperty("own-ship-symbol")));
+        assertTrue(Arrays.deepEquals(battlefield.getField(), new Battlefield(10).getField()));
     }
 
     @Test
@@ -299,17 +300,5 @@ class BattlefieldTest {
         assertTrue(battlefield.parsePositionToken("J10").isPresent());
         assertEquals(9, battlefield.parsePositionToken("J10").get().row);
         assertEquals(9, battlefield.parsePositionToken("J10").get().column);
-    }
-
-    @Test
-    void testToString() {
-        String stringRep = battlefield.toString();
-        String[] lines = stringRep.split("\n");
-        // 11 lines plus 1 newline extra at start
-        assertEquals(11 + 1, lines.length);
-        assertEquals(11 * 2, lines[1].length());
-        assertEquals(11 * 2, lines[7].length());
-        assertTrue(lines[2].endsWith(PropertyManager.getProperty("water-symbol").repeat(10)));
-        assertTrue(lines[2].startsWith("A"));
     }
 }
