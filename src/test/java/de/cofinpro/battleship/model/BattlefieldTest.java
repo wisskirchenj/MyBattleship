@@ -38,7 +38,7 @@ class BattlefieldTest {
     @MethodSource("provideInvalidPosition")
     void whenInvalidPositionGiven_isValidShotGivesEmpty(String position) {
         assertTrue(battlefield.couldPositionShip(List.of("F5", "H5"), new Battleship("test", 3)));
-        Optional<Shot> shot = battlefield.isValidShot(position);
+        Optional<Shot> shot = battlefield.getShot(position);
         assertTrue(shot.isEmpty());
     }
 
@@ -52,40 +52,10 @@ class BattlefieldTest {
 
     @ParameterizedTest
     @MethodSource("provideShipPosition")
-    void whenShipPositionGiven_isValidShotGivesHit(String position) {
-        assertTrue(battlefield.couldPositionShip(List.of("F5", "H5"), new Battleship("test", 3)));
-        Optional<Shot> shot = battlefield.isValidShot(position);
+    void whenShipPositionGiven_isValidShotIsPresent(String position) {
+        Optional<Shot> shot = battlefield.getShot(position);
         assertTrue(shot.isPresent());
-        assertFalse(shot.get().isMissed());
-        assertEquals(4, shot.get().getPosition().column);
-        Battlefield.Indices indices = shot.get().getPosition();
-        assertEquals(BattlefieldCell.HIT, battlefield.getField()[indices.row][indices.column]);
-    }
-
-    static Stream<Arguments> provideWaterPosition() {
-        return Stream.of(
-                Arguments.of("E5"),
-                Arguments.of("I5"),
-                Arguments.of("F4"),
-                Arguments.of("G4"),
-                Arguments.of("H4"),
-                Arguments.of("H6"),
-                Arguments.of("F6"),
-                Arguments.of("G6"),
-                Arguments.of("A1"),
-                Arguments.of("J10")
-        );
-    }
-
-    @ParameterizedTest
-    @MethodSource("provideWaterPosition")
-    void whenNonShipPositionGiven_isValidShotGivesMiss(String position) {
-        assertTrue(battlefield.couldPositionShip(List.of("F5", "H5"), new Battleship("test", 3)));
-        Optional<Shot> shot = battlefield.isValidShot(position);
-        assertTrue(shot.isPresent());
-        assertTrue(shot.get().isMissed());
-        Battlefield.Indices indices = shot.get().getPosition();
-        assertEquals(BattlefieldCell.MISS, battlefield.getField()[indices.row][indices.column]);
+        assertEquals(4, shot.get().getColumn());
     }
 
     static Stream<Arguments> provideRowAlignedShipAndPosition() {

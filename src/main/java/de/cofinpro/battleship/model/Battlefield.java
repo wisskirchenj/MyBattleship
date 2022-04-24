@@ -44,6 +44,16 @@ public class Battlefield {
     }
 
     /**
+     * Players can enter their MISS or HIT here to a cell, when applying a shot of the opponent.
+     * @param row row of the shot
+     * @param column column of the shot
+     * @param type enum type to set the cell to
+     */
+    public void setCell(int row, int column, BattlefieldCell type) {
+        field[row][column] = type;
+    }
+
+    /**
      * method gets a list with 2 position strings (e.g. ["B2", "D3"]) and checks, if the tokens are indeed valid
      * positions on the battlefield and if the given ship can be positioned there. If it is possible, the ship is
      * positioned on the field, if not the battlefield remains unchanged.
@@ -54,7 +64,7 @@ public class Battlefield {
     public boolean couldPositionShip(List<String> positionTokens, Battleship ship) {
         List<Indices> indices= new ArrayList<>();
         positionTokens.forEach(token -> parsePositionToken(token).ifPresent(indices::add));
-        if (indices.size() < 2) {
+        if (indices.size() != 2) {
             log.error(PropertyManager.getProperty("error-msg-wrong-coords"));
             return false;
         }
@@ -69,21 +79,14 @@ public class Battlefield {
     }
 
     /**
-     * Gets a position string (e.g. "B2"). If the token is indeed valid, i.e. it can be parsed and does not
-     * hit an own ship, a random hit success is generated and stored in a new Shot object AND in the
-     * battlefield.
+     * Gets a position string (e.g. "B2"). If the token is indeed a valid field position,a new Shot object is
+     * generated with this position indices.
      * @param positionToken by caller guaranteed non-empty string.
-     * @return empty, if no valid position, a shot object with success information and position of the shot
+     * @return empty, if no valid position, a Shot object with position of the shot
      */
-    public Optional<Shot> isValidShot(String positionToken) {
-        Optional<Shot> optionalShot = parsePositionToken(positionToken).map(
-                indices -> new Shot(indices, field[indices.row][indices.column] != BattlefieldCell.SHIP)
-        );
-        optionalShot.ifPresentOrElse(shot ->
-                field[shot.getPosition().row][shot.getPosition().column]
-                        = shot.isMissed() ? BattlefieldCell.MISS : BattlefieldCell.HIT,
-                () -> log.error(PropertyManager.getProperty("error-msg-wrong-coords")));
-        return optionalShot;
+    public Optional<Shot> getShot(String positionToken) {
+        return parsePositionToken(positionToken)
+                .map(indices -> new Shot(indices.row, indices.column));
     }
 
     /**

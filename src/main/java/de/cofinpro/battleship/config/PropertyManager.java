@@ -10,7 +10,7 @@ import java.util.Properties;
 
 /**
  * PropertyManager class handling all application properties using java.util.Properties.
- * On class initializing, firast defaults are set and then the application.properties file is loaded from the constant
+ * On class initializing, first defaults are set and then the application.properties file is loaded from the constant
  * path specified. The class provides static methods for retrieving a property by key, resp. all properties.
  */
 @Slf4j
@@ -76,8 +76,13 @@ public class PropertyManager {
         APP_CONFIG.setProperty("error-msg-ship-length", "Error! Wrong length of the %s! Try again:");
         APP_CONFIG.setProperty("error-msg-ship-location", "Error! Wrong ship location! Try again:");
         APP_CONFIG.setProperty("error-msg-ship-too-close", "Error! You placed it too close to another one. Try again:");
+        APP_CONFIG.setProperty("msg-place-ships", "%s, place your ships on the game field");
+        APP_CONFIG.setProperty("msg-change-player", "Press Enter and pass the move to another player");
         APP_CONFIG.setProperty("msg-hit", "\nYou hit a ship!");
         APP_CONFIG.setProperty("msg-miss", "\nYou missed!");
+        APP_CONFIG.setProperty("msg-shot", "\n%s, it's your turn:");
+        APP_CONFIG.setProperty("msg-win", "\nYou sank the last ship. You won. Congratulations!");
+        APP_CONFIG.setProperty("msg-sink", "\nYou sank a ship!");
         APP_CONFIG.setProperty("test-property", "standard");
     }
 }

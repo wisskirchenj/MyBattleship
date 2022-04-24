@@ -35,5 +35,6 @@ class PropertyManagerTest {
         Properties properties = PropertyManager.getProperties();
         properties.setProperty("two-cell-ships", "20");
         assertEquals("20", PropertyManager.getProperty("two-cell-ships"));
+        properties.setProperty("two-cell-ships", "1");
     }
 }

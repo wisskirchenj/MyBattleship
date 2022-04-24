@@ -35,6 +35,7 @@ public class BattlefieldUI {
         BattlefieldCell.SHIP.setCellSymbol(PropertyManager.getProperty("water-symbol"));
         String obscuredDisplay = displayBattlefield();
         BattlefieldCell.SHIP.setCellSymbol(PropertyManager.getProperty("own-ship-symbol"));
+        log.info("-".repeat(2 * battlefield.getSize() + 1));
         return obscuredDisplay;
     }
 

@@ -1,12 +1,13 @@
 package de.cofinpro.battleship.model;
 
-import lombok.AllArgsConstructor;
 import lombok.Value;
 
+/**
+ * simple immutable shot class, that stores the position of a shot as row, column indices.
+ */
 @Value
-@AllArgsConstructor
 public class Shot {
 
-    Battlefield.Indices position;
-    boolean missed;
+    int row;
+    int column;
 }

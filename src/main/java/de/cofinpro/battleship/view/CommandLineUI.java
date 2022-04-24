@@ -1,5 +1,6 @@
 package de.cofinpro.battleship.view;
 
+import de.cofinpro.battleship.config.PropertyManager;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Arrays;
@@ -7,19 +8,15 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
- * simple UI wrapper class around java.util.Scanner, that is able to prompt and get user input.
+ * UI class that wraps around the log4j Logger for printing messages and takes over all
+ * the prompting of a user for coordinate inputs or player changes. (to be mocked for integration tests).
  */
 @Slf4j
-public class ScannerUI {
+public class CommandLineUI {
 
-    private Scanner scanner;
+    private Scanner scanner = new Scanner(System.in);
 
     private static final String ENTER_SHIP_FORMAT = "%nEnter the coordinates of the %s (%d cells):";
-    private static final String ENTER_SHOT = "\nTake a shot!";
-
-    public ScannerUI() {
-        this.scanner = new Scanner(System.in);
-    }
 
     /**
      * prompts for user input position strings (e.g. B3 B6) for a given ship with given (cell) length.
@@ -44,9 +41,36 @@ public class ScannerUI {
     public String promptForShotPosition() {
         String token;
         do {
-            log.info(ENTER_SHOT);
             token = scanner.nextLine();
         } while (token.isEmpty());
         return token;
+    }
+
+    /**
+     * printer method for printing standard (info level) messages to the user
+     * @param message the message to print
+     */
+    public void info(String message) {
+        log.info(message);
+    }
+
+    public void warn(String message) {
+        log.warn(message);
+    }
+
+    public void trace(String message) {
+        log.trace(message);
+    }
+
+    public void error(String message) {
+        log.error(message);
+    }
+
+    /**
+     * display a "press enter" message and wait for it.
+     */
+    public void promptForPlayerChange() {
+        info(PropertyManager.getProperty("msg-change-player"));
+        scanner.nextLine();
     }
 }

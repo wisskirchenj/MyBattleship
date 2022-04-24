@@ -1,134 +1,84 @@
 package de.cofinpro.battleship.controller;
 
 import de.cofinpro.battleship.config.PropertyManager;
-import de.cofinpro.battleship.model.Battlefield;
 import de.cofinpro.battleship.model.Battleship;
 import de.cofinpro.battleship.model.Shot;
-import de.cofinpro.battleship.view.BattlefieldUI;
-import de.cofinpro.battleship.view.PrinterUI;
-import de.cofinpro.battleship.view.ScannerUI;
+import de.cofinpro.battleship.model.ShotResult;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 /**
  * Controller class - application logic which controls the game workflow of the battleship game.
- * It creates and uses the battlefield as well as a simple printerUI and scannerUI to communicate with the user.
+ * It creates a queue of 2 players, which in turns set up their battlefields and shoot in a
+ * play loop until one player wins.
  */
 @Slf4j
 public class BattleshipController {
 
-    private final PrinterUI printer = new PrinterUI();
-    private ScannerUI scanner = new ScannerUI();
-    private Battlefield battlefield;
-    private BattlefieldUI battlefieldUI;
+    private final Queue<UserSession> players = new ArrayDeque<>();
 
     /**
-     * the run loop of the game - entry point for main program.
-     * Initializes battlefield the fleet, asks the user to position the fleet and starts the game.
+     * the run method of the game - entry point for main program.
+     * Initializes the player sessions, lets both players position their fleet and starts the play loop.
      */
     public void run() {
-        log.info("Application started:-)");
-        initBattleField();
-
-        printer.printPropertiesInfo(PropertyManager.getProperties());
-        List<Battleship> fleet = initFleet();
-        userPositionOwnShips(fleet);
+        printPropertiesInfo(PropertyManager.getProperties());
+        initPlayerSessions();
+        nextUserPositionShips();
+        nextUserPositionShips();
         play();
     }
 
     /**
-     * init the battlefield with configurable size
+     * create the User sessions for both players and add them to the players queue.
      */
-     void initBattleField() {
-        int size = Integer.parseInt(PropertyManager.getProperty("field-size"));
-        if (size < 2 || size > 26) {
-            throw new ApplicationPropertiesException("Field-size property value must be in [2,26]. Given: " + size);
-        }
-        battlefield = new Battlefield(size);
-        battlefieldUI = new BattlefieldUI(battlefield);
-        printer.info("Battlefield initialized, size " + size + ":\n");
-        battlefieldUI.displayBattlefield();
+    private void initPlayerSessions() {
+        UserSession player1 = new UserSession("Player 1");
+        UserSession player2 = new UserSession("Player 2");
+        players.offer(player1);
+        players.offer(player2);
     }
 
     /**
-     * initialize the highly configurable fleet of battleships.
-     * @return the fleet as List<Battleship>.
+     * takes out the player waiting at the head of the players queue and lets him position his ships.
+     * After that puts him back to the end of the queue.
      */
-     List<Battleship> initFleet() {
-        List<Battleship> fleet = new ArrayList<>();
-        List<String> shipNames = Arrays.stream(PropertyManager.getProperty("ship-names").split(",")).toList();
-        fleet.addAll(getNCellsShips(5, "five-cell-ships", shipNames, 0));
-        fleet.addAll(getNCellsShips(4, "four-cell-ships", shipNames, fleet.size()));
-        fleet.addAll(getNCellsShips(3, "three-cell-ships", shipNames, fleet.size()));
-        fleet.addAll(getNCellsShips(2, "two-cell-ships", shipNames, fleet.size()));
-        if (fleet.size() != shipNames.size()) {
-            log.warn("Application properties mismatch: more ship names specified as ships requested");
-        }
-        log.trace(fleet.toString());
-        return fleet;
+    private void nextUserPositionShips() {
+        UserSession player = players.remove();
+        player.userAddOwnShipsToBattleField();
+        players.offer(player);
     }
 
     /**
-     * helper method during fleet initialization, that creates and returns all ships of a given Cell-length
-     * @param cells the cells length
-     * @param amountKey amount of ships in this category as configurable
-     * @param shipNames the list af all ship names read from property.
-     * @param namesOffset offset within the names list for this category
-     * @return the list of ships created
-     */
-     List<Battleship> getNCellsShips(int cells, String amountKey, List<String> shipNames, int namesOffset) {
-        List<Battleship> nCellsShips = new ArrayList<>();
-        int shipsInCategory = Integer.parseInt(PropertyManager.getProperty(amountKey));
-
-        if (namesOffset + shipsInCategory > shipNames.size()) {
-            throw new ApplicationPropertiesException("not enough ship names specified as required for requested ships!");
-        }
-        for (int i = 0; i < shipsInCategory; i++, namesOffset++) {
-            nCellsShips.add(new Battleship(shipNames.get(namesOffset), cells));
-        }
-        return nCellsShips;
-    }
-
-    /**
-     * play loop - presently in stage 2 just one shot .-)
+     * play loop - until all ships are sunk. The currentPlayer is taken from the head of the queue, while
+     * the element() call peeks the opponent. The opponents battlefield is only shown obscured.
+     * The player who has the turn shoots and the opponent applies the shot to his battlefield.
+     * Then the turn changes - until one player has won.
      */
     void play() {
-        printer.info("\nThe Game starts!");
-        battlefieldUI.displayBattlefieldObscured();
+        log.info("\nThe game starts!");
+        ShotResult shotResult = ShotResult.NONE;
+        while (shotResult != ShotResult.WON) {
+            UserSession currentPlayer = players.remove();
+            UserSession opponent = players.element();
 
-        Shot shot;
-        String positionToken;
-        do {
-            positionToken = scanner.promptForShotPosition();
-            shot = battlefield.isValidShot(positionToken).orElse(null);
-        } while (shot == null);
-
-        battlefieldUI.displayBattlefieldObscured();
-        printer.info(shot.isMissed() ? PropertyManager.getProperty("msg-miss")
-                : PropertyManager.getProperty("msg-hit"));
-        battlefieldUI.displayBattlefield();
+            opponent.getBattlefieldUI().displayBattlefieldObscured();
+            currentPlayer.getBattlefieldUI().displayBattlefield();
+            shotResult = opponent.applyShot(currentPlayer.shoots());
+            players.offer(currentPlayer);
+        }
+        log.info(PropertyManager.getProperty("msg-win"));
     }
 
     /**
-     * user positioning loop over all ships in the fleet
-     * @param fleet the fleet after creation
+     * display all property settings to the user (on trace level).
+     * @param properties the Properties hashmap of all application properties
      */
-    private void userPositionOwnShips(List<Battleship> fleet) {
-        fleet.forEach(this::getValidUserPosition);
-    }
-
-    /**
-     * method to ask the user for the position of a given ship in a loop until it fits on the field.
-     * @param battleship the ship to position
-     */
-     void getValidUserPosition(Battleship battleship) {
-        List<String> positions;
-        do {
-            positions = scanner.promptForShipPosition(battleship.getName(), battleship.getCells());
-        } while (!battlefield.couldPositionShip(positions, battleship));
-        battlefieldUI.displayBattlefield();
+    private void printPropertiesInfo(Properties properties) {
+        log.trace("Application parameters set as follows:");
+        properties.keySet().stream()
+                .sorted()
+                .forEach(key -> log.trace(key + " = " + properties.getProperty((String) key)));
     }
 }
